@@ -1,10 +1,24 @@
-import type { Course, TermYear, SubjectProgress, CurriculumProgress, GradeProgress } from './types';
+import type { Course, TermYear, SubjectProgress, CurriculumProgress, GradeProgress, CalculationMode } from './types';
 
-export const calculateSubjectProgress = (course: Course): SubjectProgress => {
+export const calculateSubjectProgress = (course: Course, mode: CalculationMode = 'completion'): SubjectProgress => {
   const { reportDetails } = course;
+  
+  let progress: number;
+  
+  if (mode === 'completion') {
+    // Original completion-based calculation
+    const completedReports = reportDetails.filter(report => report.progress === 100).length;
+    const totalReports = reportDetails.length;
+    progress = totalReports > 0 ? (completedReports / totalReports) * 100 : 0;
+  } else {
+    // Weighted calculation based on actual progress values
+    const totalProgress = reportDetails.reduce((sum, report) => sum + report.progress, 0);
+    const totalReports = reportDetails.length;
+    progress = totalReports > 0 ? totalProgress / totalReports : 0;
+  }
+  
   const completedReports = reportDetails.filter(report => report.progress === 100).length;
   const totalReports = reportDetails.length;
-  const progress = totalReports > 0 ? (completedReports / totalReports) * 100 : 0;
   
   const scoresWithValues = reportDetails.filter(report => report.score !== null).map(report => report.score!);
   const averageScore = scoresWithValues.length > 0 
@@ -39,7 +53,7 @@ export const calculateSubjectProgress = (course: Course): SubjectProgress => {
   };
 };
 
-export const calculateCurriculumProgress = (courses: Course[]): CurriculumProgress[] => {
+export const calculateCurriculumProgress = (courses: Course[], mode: CalculationMode = 'completion'): CurriculumProgress[] => {
   const curriculumMap = new Map<string, Course[]>();
   
   courses.forEach(course => {
@@ -50,7 +64,7 @@ export const calculateCurriculumProgress = (courses: Course[]): CurriculumProgre
   });
 
   return Array.from(curriculumMap.entries()).map(([curriculumName, curriculumCourses]) => {
-    const subjects = curriculumCourses.map(calculateSubjectProgress);
+    const subjects = curriculumCourses.map(course => calculateSubjectProgress(course, mode));
     const totalSubjects = subjects.length;
     const completedSubjects = subjects.filter(subject => subject.progress === 100).length;
     const overallProgress = subjects.length > 0 
@@ -67,8 +81,8 @@ export const calculateCurriculumProgress = (courses: Course[]): CurriculumProgre
   });
 };
 
-export const calculateGradeProgress = (termYear: TermYear): GradeProgress => {
-  const curriculums = calculateCurriculumProgress(termYear.courses);
+export const calculateGradeProgress = (termYear: TermYear, mode: CalculationMode = 'completion'): GradeProgress => {
+  const curriculums = calculateCurriculumProgress(termYear.courses, mode);
   const totalSubjects = curriculums.reduce((sum, curriculum) => sum + curriculum.totalSubjects, 0);
   const completedSubjects = curriculums.reduce((sum, curriculum) => sum + curriculum.completedSubjects, 0);
   const overallProgress = curriculums.length > 0 

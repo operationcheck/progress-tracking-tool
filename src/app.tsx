@@ -1,24 +1,38 @@
 import { useState } from 'preact/hooks';
-import type { ApiResponse, GradeProgress } from './types';
+import type { ApiResponse, GradeProgress, CalculationMode } from './types';
 import { DataInputTabs } from './components/DataInputTabs';
 import { GradeFilter } from './components/GradeFilter';
 import { CurriculumSection } from './components/CurriculumSection';
 import { StatisticsCard } from './components/StatisticsCard';
+import { CalculationModeToggle } from './components/CalculationModeToggle';
 import { calculateGradeProgress } from './utils';
 
 export function App() {
   const [data, setData] = useState<ApiResponse | null>(null);
   const [grades, setGrades] = useState<GradeProgress[]>([]);
   const [activeGrade, setActiveGrade] = useState<string>('');
+  const [calculationMode, setCalculationMode] = useState<CalculationMode>('completion');
 
   const handleDataLoad = (jsonData: ApiResponse) => {
     setData(jsonData);
-    
-    const gradeProgressData = jsonData.result.data.termYears.map(calculateGradeProgress);
+    recalculateProgress(jsonData);
+  };
+
+  const recalculateProgress = (jsonData: ApiResponse) => {
+    const gradeProgressData = jsonData.result.data.termYears.map(termYear => 
+      calculateGradeProgress(termYear, calculationMode)
+    );
     setGrades(gradeProgressData);
     
-    if (gradeProgressData.length > 0) {
+    if (gradeProgressData.length > 0 && !activeGrade) {
       setActiveGrade(gradeProgressData[0].grade);
+    }
+  };
+
+  const handleModeChange = (mode: CalculationMode) => {
+    setCalculationMode(mode);
+    if (data) {
+      recalculateProgress(data);
     }
   };
 
@@ -44,6 +58,11 @@ export function App() {
           <DataInputTabs onDataLoad={handleDataLoad} />
         ) : (
           <div>
+            <CalculationModeToggle 
+              mode={calculationMode}
+              onModeChange={handleModeChange}
+            />
+            
             <GradeFilter 
               grades={grades}
               activeGrade={activeGrade}

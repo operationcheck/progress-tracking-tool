@@ -106,3 +106,5 @@ export interface GradeProgress {
   totalSubjects: number;
   completedSubjects: number;
 }
+
+export type CalculationMode = 'completion' | 'weighted';
